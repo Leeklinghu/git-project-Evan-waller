@@ -41,53 +41,53 @@ public class GitInitialize {
     // 4. Create a file named HEAD inside git/ if it does not already exist, with no extension
     // all these prarmeters represent whether each file/directory already exists in ., they will be
     // checked throughout the method and all start as false
-    public static String init(boolean gitExists, boolean objectsExists, boolean indexExists,
+    public static String init(boolean gitDirectoryExists, boolean objectsDirectoryExists, boolean indexFileExists,
             boolean HEADExists) {
 
         try {
 
             // initialize the git directory by first creating a File object called git
-            File git = new File("git");
+            File gitDirectory = new File("git");
 
             // make sure a directory named git doesn't already exist
-            // if it doesn't exist set gitExists to false
-            // otherwise set gitExists to true
-            if (!git.exists()) {
-                gitExists = false;
-                git.mkdir();
+            // if it doesn't exist set gitDirectoryExists to false
+            // otherwise set gitDirectoryExists to true
+            if (!gitDirectory.exists()) {
+                gitDirectoryExists = false;
+                gitDirectory.mkdir();
             } else {
-                gitExists = true;
+                gitDirectoryExists = true;
             }
 
             // initialize the objects directory inside of git by first creating a File Object called
             // objects
-            File objects = new File(git, "objects");
+            File objects = new File(gitDirectory, "objects");
 
             // make sure a directory named objects doesn't already exist
-            // if it doesn't set objectsExists to false
-            // otherwise set objectsExists to true
+            // if it doesn't set objectsDirectoryExists to false
+            // otherwise set objectsDirectoryExists to true
             if (!objects.exists()) {
-                objectsExists = true;
+                objectsDirectoryExists = true;
                 objects.mkdir();
             } else {
-                objectsExists = true;
+                objectsDirectoryExists = true;
             }
 
             // initialize the index file by first creating a File object inside of git called index
-            File index = new File(git, "index");
+            File index = new File(gitDirectory, "index");
 
             // make sure a file named index doesn't already exist
-            // if it doesn't exist set indexExists to false
-            // otherwise set indexExists to true
+            // if it doesn't exist set indexFileExists to false
+            // otherwise set indexFileExists to true
             if (!index.exists()) {
-                indexExists = false;
+                indexFileExists = false;
                 index.createNewFile();
             } else {
-                indexExists = true;
+                indexFileExists = true;
             }
 
             // initialize the HEAD file by first creating a File object inside of git called HEAD
-            File HEAD = new File(git, "HEAD");
+            File HEAD = new File(gitDirectory, "HEAD");
 
             // make sure a file named HEAD doesn't already exist
             // if it doesn't exist set HEADExists to false
@@ -101,7 +101,7 @@ public class GitInitialize {
 
             // if all four of the boolean parameters are true return: Git Repository Already Exists
             // otherwise return: Git Repository Created
-            if (gitExists == true && objectsExists == true && indexExists == true
+            if (gitDirectoryExists == true && objectsDirectoryExists == true && indexFileExists == true
                     && HEADExists == true) {
                 return "Git Repository Already Exists";
             } else {
@@ -182,19 +182,19 @@ public class GitInitialize {
             fileReader.close();
 
             // Instantiate the name of newFile as the hash of filePath
-            String newFileName = hashFile(filePath);
+            String blobHash = hashFile(filePath);
 
             // create the new file
-            File newFile = new File("git/objects/", newFileName);
+            File blobFile = new File("git/objects/", blobHash);
 
-            // create the writer for newFile and write the blob into it
-            FileWriter newFileWriter = new FileWriter(newFile);
+            // create the writer for blobFile and write the blob into it
+            FileWriter newFileWriter = new FileWriter(blobFile);
             newFileWriter.write(fileContents.toString());
 
             newFileWriter.close();
 
             // return the name of the newly created file
-            return newFileName;
+            return blobHash;
 
         } catch (IOException e) {
             System.out.println("File error: " + e.getMessage());
@@ -213,7 +213,7 @@ public class GitInitialize {
         try {
 
             // turn index into a Java File Object
-            File index = new File("git/index");
+            File indexFile = new File("git/index");
 
             StringBuilder entry = new StringBuilder();
 
@@ -248,7 +248,7 @@ public class GitInitialize {
 
 
             // create the fileWriter for index
-            FileWriter indexWriter = new FileWriter(index);
+            FileWriter indexWriter = new FileWriter(indexFile);
 
             // write indexContents into index
             // if there is something already inside the file write a new line to it before entry
