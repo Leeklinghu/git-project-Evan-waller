@@ -16,9 +16,9 @@ public class GitInitialize {
 
         // System.out.println("Testing hashFile()");
         // try {
-        //     System.out.println(hashFile("Hello.txt"));
+        // System.out.println(hashFile("Hello.txt"));
         // } catch (IOException e) {
-        //     System.out.println("File error: " + e.getMessage());
+        // System.out.println("File error: " + e.getMessage());
         // }
 
         // System.out.println();
@@ -28,9 +28,9 @@ public class GitInitialize {
 
         // System.out.println();
 
-        System.out.println("Testing updateIndexFile()");
-        System.out.println(updateIndexFile("Hello.txt"));
-        System.out.println(updateIndexFile("Hello1.txt"));
+        // System.out.println("Testing updateIndexFile()");
+        // System.out.println(updateIndexFile("Hello.txt"));
+        // System.out.println(updateIndexFile("Hello1.txt"));
 
     }
 
@@ -155,45 +155,46 @@ public class GitInitialize {
         return hash;
     }
 
-    //This method that creates a blob for a given file
-    //It takes in the file path of an existing file
-    //It computes the SHA-1 hash of the file's contents
-    //Then creates a new file in git/objects/ with that hash as its filename
-    //Then it writes the original file's content into the blob, byte for byte, unchanged
-    //It returns the hashed file name of the new file created inside of git/objects/
+    // This method that creates a blob for a given file
+    // It takes in the file path of an existing file
+    // It computes the SHA-1 hash of the file's contents
+    // Then creates a new file in git/objects/ with that hash as its filename
+    // Then it writes the original file's content into the blob, byte for byte, unchanged
+    // It returns the hashed file name of the new file created inside of git/objects/
     public static String createBlob(String filePath) {
 
         try {
-            //create the reader for the file we want to copy
+            // create the reader for the file we want to copy
             BufferedReader fileReader = new BufferedReader(new FileReader(filePath));
 
-            //Instantiate the file's contents as an empty StringBuilder (This is the blob)
+            // Instantiate the file's contents as an empty StringBuilder (This is the blob)
             StringBuilder fileContents = new StringBuilder();
 
-            //Instantiate the String variable line: this represents the current line in the file we're reading
-            String line;
+            // Instantiate the String variable line: this represents the current line in the file
+            // we're reading
+            String currLine;
 
-            //Add every line from the file we're reading to fileContents
-            while((line = fileReader.readLine()) != null) {
-                fileContents.append(line);
+            // Add every line from the file we're reading to fileContents
+            while ((currLine = fileReader.readLine()) != null) {
+                fileContents.append(currLine);
             }
 
             fileReader.close();
 
-            //Instantiate the name of newFile as the hash of filePath
-            String name = hashFile(filePath);
+            // Instantiate the name of newFile as the hash of filePath
+            String newFileName = hashFile(filePath);
 
-            //create the new file
-            File newFile = new File("git/objects/", name);
+            // create the new file
+            File newFile = new File("git/objects/", newFileName);
 
-            //create the writer for newFile and write the blob into it
+            // create the writer for newFile and write the blob into it
             FileWriter newFileWriter = new FileWriter(newFile);
             newFileWriter.write(fileContents.toString());
 
             newFileWriter.close();
 
-            //return the name of the newly created file
-            return name;
+            // return the name of the newly created file
+            return newFileName;
 
         } catch (IOException e) {
             System.out.println("File error: " + e.getMessage());
@@ -201,35 +202,38 @@ public class GitInitialize {
         }
     }
 
-    //This method adds a file's entry to git/index
-    //It takes in a String parameter filePath that represents, u guessed it!, the path of the file we're staging
-    //Each entry follows this format: Each line is the SHA-1 hash, one space, and the path relative to the project root. Nothing else goes on the line.
-    //It returns the entry added to index
+    // This method adds a file's entry to git/index
+    // It takes in a String parameter filePath that represents, u guessed it!, the path of the file
+    // we're staging
+    // Each entry follows this format: Each line is the SHA-1 hash, one space, and the path relative
+    // to the project root. Nothing else goes on the line.
+    // It returns the entry added to index
     public static String updateIndexFile(String filePath) {
 
         try {
 
-            //turn index into a Java File Object
+            // turn index into a Java File Object
             File index = new File("git/index");
 
             StringBuilder entry = new StringBuilder();
 
-            //the first part of the entry is the file's has
+            // the first part of the entry is the file's has
             String hash = hashFile(filePath);
 
-            //append hash to entry
+            // append hash to entry
             entry.append(hash);
 
-            //append a space to entry
+            // append a space to entry
             entry.append(" ");
 
-            //append the path to entry 
+            // append the path to entry
             entry.append(filePath);
 
-         
-            
-            //this is the contents in the index file before we write to it
-            //we'll want to read everything in file, attach it to this variable, write this variable into file, write a new line into file, then write entry into file
+
+
+            // this is the contents in the index file before we write to it
+            // we'll want to read everything in file, attach it to this variable, write this
+            // variable into file, write a new line into file, then write entry into file
             StringBuilder indexContents = new StringBuilder();
 
             String line;
@@ -237,35 +241,35 @@ public class GitInitialize {
             BufferedReader fileReader = new BufferedReader(new FileReader("git/index"));
 
             // Add every line from the file we're reading to fileContents
-            while((line = fileReader.readLine()) != null) {
+            while ((line = fileReader.readLine()) != null) {
                 indexContents.append(line);
             }
 
-            
-               
-            //create the fileWriter for index
+
+
+            // create the fileWriter for index
             FileWriter indexWriter = new FileWriter(index);
 
-            //write indexContents into index
+            // write indexContents into index
             // if there is something already inside the file write a new line to it before entry
             if (indexContents.length() > 0) {
                 indexWriter.write(indexContents.toString() + "\n" + entry.toString());
             } else {
                 indexWriter.write(indexContents.toString() + entry.toString());
             }
-            
 
-            //close the file reader
+
+            // close the file reader
             fileReader.close();
 
-            //close indexWriter
+            // close indexWriter
             indexWriter.close();
 
 
-            //write entry into index
+            // write entry into index
             // indexWriter.write(entry.toString());
 
-            //return entry.toString()
+            // return entry.toString()
             return entry.toString();
 
         } catch (IOException e) {
