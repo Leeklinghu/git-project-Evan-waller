@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.file.Path;
 
 public class GitInitialize {
 
@@ -41,8 +42,8 @@ public class GitInitialize {
     // 4. Create a file named HEAD inside git/ if it does not already exist, with no extension
     // all these prarmeters represent whether each file/directory already exists in ., they will be
     // checked throughout the method and all start as false
-    public static String init(boolean gitDirectoryExists, boolean objectsDirectoryExists, boolean indexFileExists,
-            boolean HEADExists) {
+    public static String init(boolean gitDirectoryExists, boolean objectsDirectoryExists,
+            boolean indexFileExists, boolean HEADExists) {
 
         try {
 
@@ -67,7 +68,7 @@ public class GitInitialize {
             // if it doesn't set objectsDirectoryExists to false
             // otherwise set objectsDirectoryExists to true
             if (!objects.exists()) {
-                objectsDirectoryExists = true;
+                objectsDirectoryExists = false;
                 objects.mkdir();
             } else {
                 objectsDirectoryExists = true;
@@ -101,8 +102,8 @@ public class GitInitialize {
 
             // if all four of the boolean parameters are true return: Git Repository Already Exists
             // otherwise return: Git Repository Created
-            if (gitDirectoryExists == true && objectsDirectoryExists == true && indexFileExists == true
-                    && HEADExists == true) {
+            if (gitDirectoryExists == true && objectsDirectoryExists == true
+                    && indexFileExists == true && HEADExists == true) {
                 return "Git Repository Already Exists";
             } else {
                 return "Git Repository Created";
@@ -172,17 +173,21 @@ public class GitInitialize {
 
             // Instantiate the String variable line: this represents the current line in the file
             // we're reading
-            String currLine;
+            int c;
 
             // Add every line from the file we're reading to fileContents
-            while ((currLine = fileReader.readLine()) != null) {
-                fileContents.append(currLine);
+            while ((c = fileReader.read()) != -1) {
+                fileContents.append((char) c);
             }
 
             fileReader.close();
 
             // Instantiate the name of newFile as the hash of filePath
             String blobHash = hashFile(filePath);
+
+            if (blobHash.isEmpty()) {
+                return "";
+            }
 
             // create the new file
             File blobFile = new File("git/objects/", blobHash);
@@ -215,6 +220,17 @@ public class GitInitialize {
             // turn index into a Java File Object
             File indexFile = new File("git/index");
 
+            Path root = new File("").toPath().toAbsolutePath().normalize();
+            Path file = new File(filePath).toPath().toAbsolutePath().normalize();
+
+            if (!file.startsWith(root)) {
+                System.out.println("File must be inside the project.");
+                return "";
+            }
+
+            String relativePath = root.relativize(file).toString();
+            relativePath = relativePath.replace(File.separatorChar, '/');
+
             StringBuilder entry = new StringBuilder();
 
             // the first part of the entry is the file's has
@@ -227,7 +243,7 @@ public class GitInitialize {
             entry.append(" ");
 
             // append the path to entry
-            entry.append(filePath);
+            entry.append(relativePath);
 
 
 
@@ -235,32 +251,49 @@ public class GitInitialize {
             // we'll want to read everything in file, attach it to this variable, write this
             // variable into file, write a new line into file, then write entry into file
             StringBuilder indexContents = new StringBuilder();
-
+            boolean found = false;
             String line;
 
             BufferedReader fileReader = new BufferedReader(new FileReader("git/index"));
 
             // Add every line from the file we're reading to fileContents
             while ((line = fileReader.readLine()) != null) {
-                indexContents.append(line);
+                String[] parts = line.split(" ", 2);
+
+                if (parts.length == 2 && parts[1].equals(relativePath)) {
+                    if (parts[0].equals(hash)) {
+                        fileReader.close();
+                        return entry.toString();
+                    }
+
+                    indexContents.append(entry.toString());
+                    found = true;
+                } else {
+                    indexContents.append(line);
+                }
+
+                indexContents.append("\n");
             }
 
+            fileReader.close();
 
+            if (!found) { 
+                indexContents.append(entry.toString());
+                indexContents.append("\n");
+            }
+
+            String blobHash = createBlob(filePath);
+
+            if (blobHash.isEmpty()) {
+                return "";
+            }
 
             // create the fileWriter for index
             FileWriter indexWriter = new FileWriter(indexFile);
 
             // write indexContents into index
             // if there is something already inside the file write a new line to it before entry
-            if (indexContents.length() > 0) {
-                indexWriter.write(indexContents.toString() + "\n" + entry.toString());
-            } else {
-                indexWriter.write(indexContents.toString() + entry.toString());
-            }
-
-
-            // close the file reader
-            fileReader.close();
+            indexWriter.write(indexContents.toString());
 
             // close indexWriter
             indexWriter.close();
