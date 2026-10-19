@@ -1,0 +1,21 @@
+Behavior to verify	How well does it work? (1–5)	Is it functional / verified the functionality? What was modified to get it working?
+How their code does it (method names, approach, data types) · how you verified it (exact commands or calls, and what you saw) · what you changed to test it, or "nothing"
+
+1. Initialize — init() creates git/, git/objects/, git/index, and git/HEAD. Running it a second time reports that the repository already exists and changes nothing.		
+ - 5/5 worked as intended
+
+2. Stage a file into a blob — adding a file creates git/objects/<hash> whose content is byte for byte identical to the original file.		
+ - 2/5 you have to seperately run the make a blob file and then the make an index entry one
+ - you can also add a file to index without it being a blob and it messes up the format
+
+3. Hash correctness — the blob's filename is the true SHA-1 of the content. A file containing exactly sha1test (8 bytes, no newline) must produce 12c4c60ee087ae0f12dc6abc88495e459f6f2654, the same as printf 'sha1test' | shasum or echo -n "sha1test" | sha1sum.		
+ - 5/5 passes the test
+
+4. Index tracks the file — after adding a file, git/index contains a line for that file.	
+ - 2/5 tracks the file only through file name but not the /objects path and the format gets messed up if they have the same hash 
+
+5. Duplicate content — two files with identical content at different paths produce two index lines with the same hash but exactly one blob in git/objects/.		
+ - 4/5 they have the same blob but the lines are messed up they are on the same line instead of different ones
+
+6. Compression — blob content is compressed on disk and decompresses back to the original. (Optional stretch milestone — a 1 with the note "not implemented" is a complete answer.)		
+ - 0/5 didnt implement
