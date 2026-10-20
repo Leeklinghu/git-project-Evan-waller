@@ -1,11 +1,16 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 
 public class GitInitialize {
 
@@ -131,7 +136,7 @@ public class GitInitialize {
         }
 
         // create the file reader for filePath
-        FileReader reader = new FileReader(filePath);
+        FileInputStream reader = new FileInputStream(filePath);
 
         int character;
         // while the current character being read is valid, convert it into a byte and digest that
@@ -277,7 +282,7 @@ public class GitInitialize {
 
             fileReader.close();
 
-            if (!found) { 
+            if (!found) {
                 indexContents.append(entry.toString());
                 indexContents.append("\n");
             }
@@ -309,5 +314,54 @@ public class GitInitialize {
             System.out.println("File error: " + e.getMessage());
             return "";
         }
+    }
+
+    public static String createTree(ArrayList<String> workingList, String dirPath)
+            throws IOException {
+        StringBuilder treeContents = new StringBuilder();
+
+        for (int i = 0; i < workingList.size(); i++) {
+            String[] parts = workingList.get(i).split(" ", 3);
+            String type = parts[0];
+            String hash = parts[1];
+            String path = parts[2];
+
+            int lastSlash = -1;
+            for (int j = path.length() - 1; j >= 0; j--) {
+                if (path.substring(j, j + 1).equals("/")) {
+                    lastSlash = j;
+                    break;
+                }
+            }
+            String directory = "";
+            String name = path;
+
+            if (lastSlash != -1) {
+                directory = path.substring(0, lastSlash);
+                name = path.substring(lastSlash + 1);
+            }
+
+            if (directory.equals(dirPath)) {
+                treeContents.append(type + " " + hash + " " + name + "\n");
+            }
+        }
+
+        File tempfile = new File("git/objects/newTree.txt");
+        FileWriter writer = new FileWriter(tempfile, StandardCharsets.UTF_8);
+        writer.write(treeContents.toString());
+        writer.close();
+
+        String treeHash = hashFile(tempfile.getPath());
+
+        if (!tempfile.delete()) {
+            throw new IOException("Could not delete newTree.txt");
+        }
+
+        File treeFile = new File("git/objects/" + treeHash);
+        FileWriter treeWriter = new FileWriter(treeFile, StandardCharsets.UTF_8);
+        treeWriter.write(treeContents.toString());
+        treeWriter.close();
+
+        return treeHash;
     }
 }
