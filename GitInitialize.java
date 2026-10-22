@@ -1,10 +1,14 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
 
 public class GitInitialize {
 
@@ -41,8 +45,8 @@ public class GitInitialize {
     // 4. Create a file named HEAD inside git/ if it does not already exist, with no extension
     // all these prarmeters represent whether each file/directory already exists in ., they will be
     // checked throughout the method and all start as false
-    public static String init(boolean gitDirectoryExists, boolean objectsDirectoryExists, boolean indexFileExists,
-            boolean HEADExists) {
+    public static String init(boolean gitDirectoryExists, boolean objectsDirectoryExists,
+            boolean indexFileExists, boolean HEADExists) {
 
         try {
 
@@ -67,7 +71,7 @@ public class GitInitialize {
             // if it doesn't set objectsDirectoryExists to false
             // otherwise set objectsDirectoryExists to true
             if (!objects.exists()) {
-                objectsDirectoryExists = true;
+                objectsDirectoryExists = false;
                 objects.mkdir();
             } else {
                 objectsDirectoryExists = true;
@@ -101,8 +105,8 @@ public class GitInitialize {
 
             // if all four of the boolean parameters are true return: Git Repository Already Exists
             // otherwise return: Git Repository Created
-            if (gitDirectoryExists == true && objectsDirectoryExists == true && indexFileExists == true
-                    && HEADExists == true) {
+            if (gitDirectoryExists == true && objectsDirectoryExists == true
+                    && indexFileExists == true && HEADExists == true) {
                 return "Git Repository Already Exists";
             } else {
                 return "Git Repository Created";
@@ -130,7 +134,7 @@ public class GitInitialize {
         }
 
         // create the file reader for filePath
-        FileReader reader = new FileReader(filePath);
+        FileInputStream reader = new FileInputStream(filePath);
 
         int character;
         // while the current character being read is valid, convert it into a byte and digest that
@@ -172,17 +176,21 @@ public class GitInitialize {
 
             // Instantiate the String variable line: this represents the current line in the file
             // we're reading
-            String currLine;
+            int c;
 
             // Add every line from the file we're reading to fileContents
-            while ((currLine = fileReader.readLine()) != null) {
-                fileContents.append(currLine);
+            while ((c = fileReader.read()) != -1) {
+                fileContents.append((char) c);
             }
 
             fileReader.close();
 
             // Instantiate the name of newFile as the hash of filePath
             String blobHash = hashFile(filePath);
+
+            if (blobHash.isEmpty()) {
+                return "";
+            }
 
             // create the new file
             File blobFile = new File("git/objects/", blobHash);
@@ -215,6 +223,17 @@ public class GitInitialize {
             // turn index into a Java File Object
             File indexFile = new File("git/index");
 
+            Path root = new File("").toPath().toAbsolutePath().normalize();
+            Path file = new File(filePath).toPath().toAbsolutePath().normalize();
+
+            if (!file.startsWith(root)) {
+                System.out.println("File must be inside the project.");
+                return "";
+            }
+
+            String relativePath = root.relativize(file).toString();
+            relativePath = relativePath.replace(File.separatorChar, '/');
+
             StringBuilder entry = new StringBuilder();
 
             // the first part of the entry is the file's has
@@ -227,7 +246,7 @@ public class GitInitialize {
             entry.append(" ");
 
             // append the path to entry
-            entry.append(filePath);
+            entry.append(relativePath);
 
 
 
@@ -235,32 +254,49 @@ public class GitInitialize {
             // we'll want to read everything in file, attach it to this variable, write this
             // variable into file, write a new line into file, then write entry into file
             StringBuilder indexContents = new StringBuilder();
-
+            boolean found = false;
             String line;
 
             BufferedReader fileReader = new BufferedReader(new FileReader("git/index"));
 
             // Add every line from the file we're reading to fileContents
             while ((line = fileReader.readLine()) != null) {
-                indexContents.append(line);
+                String[] parts = line.split(" ", 2);
+
+                if (parts.length == 2 && parts[1].equals(relativePath)) {
+                    if (parts[0].equals(hash)) {
+                        fileReader.close();
+                        return entry.toString();
+                    }
+
+                    indexContents.append(entry.toString());
+                    found = true;
+                } else {
+                    indexContents.append(line);
+                }
+
+                indexContents.append("\n");
             }
 
+            fileReader.close();
 
+            if (!found) {
+                indexContents.append(entry.toString());
+                indexContents.append("\n");
+            }
+
+            String blobHash = createBlob(filePath);
+
+            if (blobHash.isEmpty()) {
+                return "";
+            }
 
             // create the fileWriter for index
             FileWriter indexWriter = new FileWriter(indexFile);
 
             // write indexContents into index
             // if there is something already inside the file write a new line to it before entry
-            if (indexContents.length() > 0) {
-                indexWriter.write(indexContents.toString() + "\n" + entry.toString());
-            } else {
-                indexWriter.write(indexContents.toString() + entry.toString());
-            }
-
-
-            // close the file reader
-            fileReader.close();
+            indexWriter.write(indexContents.toString());
 
             // close indexWriter
             indexWriter.close();
@@ -275,6 +311,139 @@ public class GitInitialize {
         } catch (IOException e) {
             System.out.println("File error: " + e.getMessage());
             return "";
+        }
+    }
+
+    public static String createTree(ArrayList<String> workingList, String dirPath)
+            throws IOException {
+        StringBuilder treeContents = new StringBuilder();
+
+        for (int i = 0; i < workingList.size(); i++) {
+            String[] parts = workingList.get(i).split(" ", 3);
+            String type = parts[0];
+            String hash = parts[1];
+            String path = parts[2];
+
+            int lastSlash = -1;
+            for (int j = path.length() - 1; j >= 0; j--) {
+                if (path.substring(j, j + 1).equals("/")) {
+                    lastSlash = j;
+                    break;
+                }
+            }
+            String directory = "";
+            String name = path;
+
+            if (lastSlash != -1) {
+                directory = path.substring(0, lastSlash);
+                name = path.substring(lastSlash + 1);
+            }
+
+            if (directory.equals(dirPath)) {
+                treeContents.append(type + " " + hash + " " + name + "\n");
+            }
+        }
+
+        File tempfile = new File("git/objects/newTree.txt");
+        FileWriter writer = new FileWriter(tempfile, StandardCharsets.UTF_8);
+        writer.write(treeContents.toString());
+        writer.close();
+
+        String treeHash = hashFile(tempfile.getPath());
+
+        if (!tempfile.delete()) {
+            throw new IOException("Could not delete newTree.txt");
+        }
+
+        File treeFile = new File("git/objects/" + treeHash);
+        FileWriter treeWriter = new FileWriter(treeFile, StandardCharsets.UTF_8);
+        treeWriter.write(treeContents.toString());
+        treeWriter.close();
+
+        return treeHash;
+    }
+
+    public static String createTreeFromIndex() throws IOException {
+        ArrayList<String> workingList = new ArrayList<String>();
+
+        BufferedReader reader = new BufferedReader(new FileReader("git/index"));
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            if (!line.isBlank()) {
+                workingList.add("blob " + line);
+            }
+        }
+
+        reader.close();
+
+        while (true) {
+            for (int i = 0; i < workingList.size() - 1; i++) {
+                int smallestIndex = i;
+
+                for (int j = i + 1; j < workingList.size(); j++) {
+                    String currentPath = workingList.get(j).split(" ", 3)[2];
+                    String smallestPath = workingList.get(smallestIndex).split(" ", 3)[2];
+
+                    if (currentPath.compareTo(smallestPath) < 0) {
+                        smallestIndex = j;
+                    }
+                }
+
+                String temp = workingList.get(i);
+                workingList.set(i, workingList.get(smallestIndex));
+                workingList.set(smallestIndex, temp);
+            }
+
+            String deepestDirectory = "";
+            int greatestDepth = 0;
+
+            for (int i = 0; i < workingList.size(); i++) {
+                String path = workingList.get(i).split(" ", 3)[2];
+                int depth = 0;
+
+                for (int j = 0; j < path.length(); j++) {
+                    if (path.substring(j, j + 1).equals("/")) {
+                        depth++;
+                    }
+                }
+
+                if (depth > greatestDepth) {
+                    greatestDepth = depth;
+                    int lastSlash = path.lastIndexOf("/");
+                    deepestDirectory = path.substring(0, lastSlash);
+                }
+            }
+
+            if (greatestDepth == 0) {
+                if (workingList.size() == 1) {
+                    String[] parts = workingList.get(0).split(" ", 3);
+
+                    if (parts[0].equals("tree")) {
+                        return parts[1];
+                    }
+                }
+
+                return createTree(workingList, "");
+            }
+
+            String treeHash = createTree(workingList, deepestDirectory);
+
+            for (int i = workingList.size() - 1; i >= 0; i--) {
+                String path = workingList.get(i).split(" ", 3)[2];
+                int lastSlash = path.lastIndexOf("/");
+                String directory = "";
+
+                if (lastSlash != -1) {
+                    directory = path.substring(0, lastSlash);
+                }
+
+                if (directory.equals(deepestDirectory)) {
+                    workingList.remove(i);
+                }
+            }
+
+            workingList.add("tree " + treeHash + " " + deepestDirectory);
         }
     }
 }
