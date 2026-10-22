@@ -7,9 +7,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 
 public class GitInitialize {
@@ -363,5 +361,89 @@ public class GitInitialize {
         treeWriter.close();
 
         return treeHash;
+    }
+
+    public static String createTreeFromIndex() throws IOException {
+        ArrayList<String> workingList = new ArrayList<String>();
+
+        BufferedReader reader = new BufferedReader(new FileReader("git/index"));
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            if (!line.isBlank()) {
+                workingList.add("blob " + line);
+            }
+        }
+
+        reader.close();
+
+        while (true) {
+            for (int i = 0; i < workingList.size() - 1; i++) {
+                int smallestIndex = i;
+
+                for (int j = i + 1; j < workingList.size(); j++) {
+                    String currentPath = workingList.get(j).split(" ", 3)[2];
+                    String smallestPath = workingList.get(smallestIndex).split(" ", 3)[2];
+
+                    if (currentPath.compareTo(smallestPath) < 0) {
+                        smallestIndex = j;
+                    }
+                }
+
+                String temp = workingList.get(i);
+                workingList.set(i, workingList.get(smallestIndex));
+                workingList.set(smallestIndex, temp);
+            }
+
+            String deepestDirectory = "";
+            int greatestDepth = 0;
+
+            for (int i = 0; i < workingList.size(); i++) {
+                String path = workingList.get(i).split(" ", 3)[2];
+                int depth = 0;
+
+                for (int j = 0; j < path.length(); j++) {
+                    if (path.substring(j, j + 1).equals("/")) {
+                        depth++;
+                    }
+                }
+
+                if (depth > greatestDepth) {
+                    greatestDepth = depth;
+                    int lastSlash = path.lastIndexOf("/");
+                    deepestDirectory = path.substring(0, lastSlash);
+                }
+            }
+
+            if (greatestDepth == 0) {
+                if (workingList.size() == 1) {
+                    String[] parts = workingList.get(0).split(" ", 3);
+
+                    if (parts[0].equals("tree")) {
+                        return parts[1];
+                    }
+                }
+
+                return createTree(workingList, "");
+            }
+
+            String treeHash = createTree(workingList, deepestDirectory);
+
+            for (int i = workingList.size() - 1; i >= 0; i--) {
+                String path = workingList.get(i).split(" ", 3)[2];
+                int lastSlash = path.lastIndexOf("/");
+                String directory = "";
+
+                if (lastSlash != -1) {
+                    directory = path.substring(0, lastSlash);
+                }
+
+                if (directory.equals(deepestDirectory)) {
+                    workingList.remove(i);
+                }
+            }
+
+            workingList.add("tree " + treeHash + " " + deepestDirectory);
+        }
     }
 }
