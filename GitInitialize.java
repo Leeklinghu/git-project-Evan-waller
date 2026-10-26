@@ -298,7 +298,7 @@ public class GitInitialize {
             // if there is something already inside the file write a new line to it before entry
             indexWriter.write(indexContents.toString());
 
-            // close indexWriter
+      
             indexWriter.close();
 
 
@@ -443,7 +443,7 @@ public class GitInitialize {
                 }
             }
 
-            workingList.add("tree " + treeHash + " " + deepestDirectory);
+            workingList.add("tree " + treeHash + " " + deepestDirectory); //finish check, no name needs to be change boka
         }
     }
 }
