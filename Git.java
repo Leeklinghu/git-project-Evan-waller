@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
-public class GitInitialize {
+public class Git {
 
     public static void main(String[] args) {
         // System.out.println("Testing init()");
